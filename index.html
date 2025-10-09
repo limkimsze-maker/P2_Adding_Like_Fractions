@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Adding of Like Fractions — Quiz (10 Questions)</title>
+<style>
+  :root{
+    --ink:#0f172a; --muted:#475569; --line:#e2e8f0;
+    --blue:#9bbce6; --pink:#f7c0d1; --stroke:#111827;
+    --good:#16a34a; --bad:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font:17px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial; color:var(--ink);
+       background:linear-gradient(180deg,#fff7ed,#eef6ff 60%)}
+  header{max-width:900px;margin:22px auto 0;padding:0 16px}
+  h1{margin:0 0 6px; font-size:26px}
+  .note{color:var(--muted); margin-bottom:8px}
+  .meta{display:flex;gap:14px;align-items:center;font-weight:800}
+
+  main{max-width:900px;margin:14px auto 28px;padding:0 16px}
+  .card{background:#fff;border:2px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 6px 16px rgba(17,24,39,.06)}
+  .row{display:grid;grid-template-columns:260px 40px 260px 40px 260px;gap:12px;align-items:center}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .eq{font-size:28px;font-weight:900;text-align:center}
+
+  .frac{display:inline-grid;grid-template-rows:auto auto;justify-items:center;min-width:84px;padding:6px 10px;border-radius:12px;background:#fffef5}
+  .frac .num{border-bottom:3px solid var(--ink);width:100%;text-align:center;font-weight:900;font-size:22px}
+  .frac .den{padding-top:2px;font-size:18px;font-weight:800}
+
+  .answer{
+    display:inline-grid;grid-template-rows:auto auto;justify-items:center;min-width:94px;
+    padding:6px 10px;border-radius:12px;background:#fff;box-shadow:inset 0 -2px 0 rgba(0,0,0,.03);
+    margin-top:12px
+  }
+  .answer input{width:86px;text-align:center;font-weight:900;font-size:20px;padding:6px 8px;border-radius:10px;border:2px solid var(--line)}
+  .answer .line{width:100%;border-bottom:3px solid var(--ink);margin:6px 0}
+
+  .viz{min-height:40px}
+  .status{font-weight:900;margin-top:6px; min-height:1.2em}
+  .ok{color:var(--good)} .no{color:var(--bad)}
+  .controls{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  button{padding:10px 14px;border:none;border-radius:12px;background:#7c3aed;color:#fff;font-weight:800}
+  button.secondary{background:#fff;color:#0f172a;border:2px solid var(--line)}
+  .summary{display:none;margin-top:14px;padding:12px;border:2px solid var(--line);border-radius:12px;background:#fffef5}
+</style>
+</head>
+<body>
+<header>
+  <h1>Adding of Like Fractions</h1>
+  <div class="note">Denominators are 2–12. Fractions are proper. Answer must be ≤ 1 (enter <b>1/1</b> for a whole if needed).</div>
+  <div class="meta">
+    <div id="progress">Question 1 of 10</div>
+    <div id="scoreBox">Score: <span id="score">0</span>/10</div>
+  </div>
+</header>
+
+<main>
+  <div class="card" id="card">
+    <div class="row">
+      <!-- first addend (no pictorial under this) -->
+      <div class="col">
+        <div class="frac" id="fracA" aria-label="">
+          <span class="num" id="aN">1</span><span class="den" id="aD">5</span>
+        </div>
+      </div>
+
+      <div class="eq" aria-hidden="true">+</div>
+
+      <!-- second addend (no pictorial under this) -->
+      <div class="col">
+        <div class="frac" id="fracB" aria-label="">
+          <span class="num" id="bN">2</span><span class="den" id="bD">5</span>
+        </div>
+      </div>
+
+      <div class="eq" aria-hidden="true">=</div>
+
+      <!-- answer: pictorial bar + input only -->
+      <div class="col">
+        <div class="viz" id="barAns"></div>
+
+        <div class="answer" aria-label="type your answer as numerator over denominator">
+          <input id="inN" type="number" min="0" step="1" inputmode="numeric" placeholder="numerator">
+          <div class="line"></div>
+          <input id="inD" type="number" min="1" step="1" inputmode="numeric" placeholder="denominator">
+        </div>
+        <div class="status" id="status">&nbsp;</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="check">Check Answer</button>
+      <button id="steps" class="secondary">Step 1: show first addend</button>
+      <button id="skip" class="secondary">Skip</button>
+    </div>
+
+    <div class="summary" id="summary"></div>
+  </div>
+</main>
+
+<!-- Added credit line -->
+<footer style="max-width:900px;margin:0 auto 16px;padding:0 16px;text-align:center;color:#475569;font-weight:600;">
+  Credit to Lim Kim Sze 2025
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  // ----- utils -----
+  const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+  const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+  const simplify=(n,d)=>{const g=gcd(n,d);return[n/g,d/g];};
+  const qs=(s, r=document)=>r.querySelector(s);
+
+  // ----- bar drawing (answer pictorial only) -----
+  function drawBar(el, den, spans){
+    // spans = [{start:0, len:1, fill:'#color'}, ...]
+    const W=220, H=28, R=6, X0=6, Y0=6, segW=W/den;
+    const svgNS='http://www.w3.org/2000/svg';
+    const svg=document.createElementNS(svgNS,'svg');
+    svg.setAttribute('width', W+X0*2);
+    svg.setAttribute('height', H+Y0*2);
+
+    spans.forEach(s=>{
+      if(s.len<=0) return;
+      const rect=document.createElementNS(svgNS,'rect');
+      rect.setAttribute('x', X0 + s.start*segW);
+      rect.setAttribute('y', Y0);
+      rect.setAttribute('width', s.len*segW);
+      rect.setAttribute('height', H);
+      rect.setAttribute('rx', R); rect.setAttribute('ry', R);
+      rect.setAttribute('fill', s.fill);
+      svg.appendChild(rect);
+    });
+
+    // segment lines
+    for(let i=1;i<den;i++){
+      const x=X0+i*segW;
+      const ln=document.createElementNS(svgNS,'line');
+      ln.setAttribute('x1',x); ln.setAttribute('x2',x);
+      ln.setAttribute('y1',Y0); ln.setAttribute('y2',Y0+H);
+      ln.setAttribute('stroke', getComputedStyle(document.documentElement).getPropertyValue('--stroke') || '#111827');
+      ln.setAttribute('stroke-width','2');
+      svg.appendChild(ln);
+    }
+    // frame
+    const frame=document.createElementNS(svgNS,'rect');
+    frame.setAttribute('x',X0); frame.setAttribute('y',Y0);
+    frame.setAttribute('width',W); frame.setAttribute('height',H);
+    frame.setAttribute('rx',R); frame.setAttribute('ry',R);
+    frame.setAttribute('fill','none');
+    frame.setAttribute('stroke', getComputedStyle(document.documentElement).getPropertyValue('--stroke') || '#111827');
+    frame.setAttribute('stroke-width','2');
+    svg.appendChild(frame);
+
+    el.innerHTML=''; el.appendChild(svg);
+  }
+
+  // ----- state -----
+  const BLUE = getComputedStyle(document.documentElement).getPropertyValue('--blue') || '#9bbce6';
+  const PINK = getComputedStyle(document.documentElement).getPropertyValue('--pink') || '#f7c0d1';
+  let questions = [];
+  let idx = 0;
+  let score = 0;
+  let stepMode = 0; // 0 full result, 1 first addend, 2 composition
+
+  // ----- question generator (like, proper, answer ≤ 1) -----
+  function makeOne(){
+    const d = rnd(2,12);
+    const a = rnd(1, d-1);
+    const bMax = Math.min(d-1, d-a);     // ensure a+b ≤ d (1 allowed)
+    const b = rnd(1, bMax);
+    const [ansN, ansD] = simplify(a+b, d);
+    return {a,b,d, ansN, ansD};
+  }
+  function buildSet(n=10){
+    const set=[];
+    while(set.length<n){
+      const q = makeOne();
+      // Avoid exact duplicate triplets within the set
+      const key = `${q.d}|${q.a}|${q.b}`;
+      if(!set.some(x=>`${x.d}|${x.a}|${x.b}`===key)) set.push(q);
+    }
+    return set;
+  }
+
+  // ----- steps renderer -----
+  function renderSteps(q){
+    const den = q.d;
+    if(stepMode === 1){
+      drawBar(qs('#barAns'), den, [{start:0,len:q.a,fill:BLUE}]);
+      qs('#steps').textContent = 'Step 2: add the next parts';
+    } else if(stepMode === 2){
+      drawBar(qs('#barAns'), den, [
+        {start:0,len:q.a,fill:BLUE},
+        {start:q.a,len:q.b,fill:PINK}
+      ]);
+      qs('#steps').textContent = 'Show full result';
+    } else {
+      drawBar(qs('#barAns'), den, [
+        {start:0,len:q.a+q.b,fill:BLUE},
+        {start:q.a,len:q.b,fill:PINK}
+      ]);
+      qs('#steps').textContent = 'Step 1: show first addend';
+    }
+  }
+
+  // ----- load question -----
+  function showQuestion(){
+    const q = questions[idx];
+    qs('#progress').textContent = `Question ${idx+1} of ${questions.length}`;
+    qs('#aN').textContent = q.a; qs('#aD').textContent = q.d;
+    qs('#bN').textContent = q.b; qs('#bD').textContent = q.d;
+    qs('#fracA').setAttribute('aria-label', `${q.a} over ${q.d}`);
+    qs('#fracB').setAttribute('aria-label', `${q.b} over ${q.d}`);
+    qs('#inN').value=''; qs('#inD').value='';
+    const st=qs('#status'); st.textContent=' '; st.className='status';
+    stepMode=0; renderSteps(q);
+  }
+
+  // ----- check & advance -----
+  function simplifyPair(n,d){
+    const g=gcd(n,d); return [n/g, d/g];
+  }
+  function checkAnswer(){
+    const q = questions[idx];
+    const st=qs('#status');
+    const n = Number(qs('#inN').value);
+    const d = Number(qs('#inD').value);
+
+    if(!Number.isInteger(n) || !Number.isInteger(d) || d<=0){
+      st.textContent='Enter whole numbers (n/d).'; st.className='status no'; return;
+    }
+    if(d<2 || d>12 || n<0 || n>d){
+      st.textContent='Answer must be ≤ 1 with denominator 2–12.'; st.className='status no'; return;
+    }
+    const [sn,sd]=simplifyPair(n,d);
+    if(sn===q.ansN && sd===q.ansD){
+      st.textContent='Correct!'; st.className='status ok';
+      score++; qs('#score').textContent = String(score);
+      // Move to next question or finish
+      setTimeout(nextQuestion, 600);
+    }else{
+      st.textContent='Try again'; st.className='status no';
+    }
+  }
+
+  function nextQuestion(skipped=false){
+    idx++;
+    if(idx < questions.length){
+      showQuestion();
+    } else {
+      // finished
+      const sum = qs('#summary');
+      sum.style.display='block';
+      sum.innerHTML = `<b>Quiz complete!</b> You scored <b>${score}/${questions.length}</b>.`;
+      // lock controls
+      qs('#check').disabled=true;
+      qs('#steps').disabled=true;
+      qs('#skip').disabled=true;
+      qs('#progress').textContent = `Finished`;
+    }
+  }
+
+  // ----- events -----
+  qs('#check').addEventListener('click', checkAnswer);
+  qs('#inN').addEventListener('keydown', e=>{ if(e.key==='Enter') checkAnswer(); });
+  qs('#inD').addEventListener('keydown', e=>{ if(e.key==='Enter') checkAnswer(); });
+  qs('#steps').addEventListener('click', ()=>{ stepMode = (stepMode+1)%3; renderSteps(questions[idx]); });
+  qs('#skip').addEventListener('click', ()=> nextQuestion(true));
+
+  // ----- init -----
+  questions = buildSet(10);
+  showQuestion();
+})();
+</script>
+</body>
+</html>
